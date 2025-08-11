@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Plus, BarChart3, X } from 'lucide-react';
+import { Calendar, Plus, BarChart3, X, Users, Edit } from 'lucide-react';
+
+interface Vacation {
+  start: string;
+  days: number;
+}
 
 interface Employee {
   id: string;
   name: string;
-  vacationStart: string;
-  vacationDays: number;
+  vacations: Vacation[];
 }
 
 interface Toast {
@@ -19,6 +23,9 @@ function App() {
   const [currentYear, setCurrentYear] = useState(2025);
   const [showCurrentMonthModal, setShowCurrentMonthModal] = useState(false);
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showEmployeeListModal, setShowEmployeeListModal] = useState(false);
+  const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -28,17 +35,31 @@ function App() {
 
   // Load initial data
   useEffect(() => {
-    const savedEmployees = localStorage.getItem('vacation-employees');
-    if (savedEmployees) {
-      setEmployees(JSON.parse(savedEmployees));
-    } else {
-      // Default data
-      setEmployees([
-        { id: '1', name: 'Иванов И.И.', vacationStart: '2025-06-15', vacationDays: 14 },
-        { id: '2', name: 'Петров П.П.', vacationStart: '2025-07-01', vacationDays: 21 },
-        { id: '3', name: 'Сидоров С.С.', vacationStart: '2025-08-10', vacationDays: 14 }
-      ]);
-    }
+    const loadVacationData = async () => {
+      try {
+        const response = await fetch('/vacations.json');
+        const vacationData = await response.json();
+        
+        const formattedEmployees: Employee[] = vacationData.map((emp: any, index: number) => ({
+          id: (index + 1).toString(),
+          name: emp.name,
+          vacations: emp.vacations
+        }));
+        
+        setEmployees(formattedEmployees);
+      } catch (error) {
+        console.error('Error loading vacation data:', error);
+        // Fallback to localStorage or empty array
+        const savedEmployees = localStorage.getItem('vacation-employees');
+        if (savedEmployees) {
+          setEmployees(JSON.parse(savedEmployees));
+        } else {
+          setEmployees([]);
+        }
+      }
+    };
+
+    loadVacationData();
   }, []);
 
   // Save employees to localStorage
@@ -67,8 +88,10 @@ function App() {
     const newEmployee: Employee = {
       id: Date.now().toString(),
       name: formData.name,
-      vacationStart: formData.vacationStart,
-      vacationDays: formData.vacationDays
+      vacations: [{
+        start: formData.vacationStart,
+        days: formData.vacationDays
+      }]
     };
 
     setEmployees(prev => [...prev, newEmployee]);
@@ -77,19 +100,65 @@ function App() {
     showToast('Сотрудник успешно добавлен!', 'success');
   };
 
+  const handleDeleteEmployee = (employeeId: string) => {
+    setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
+    showToast('Сотрудник удален', 'success');
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setEditingEmployee(employee);
+    // Use the first vacation for editing, or default values
+    const firstVacation = employee.vacations[0] || { start: '', days: 14 };
+    setFormData({
+      name: employee.name,
+      vacationStart: firstVacation.start,
+      vacationDays: firstVacation.days
+    });
+    setShowEditEmployeeModal(true);
+  };
+
+  const handleUpdateEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name || !formData.vacationStart || !formData.vacationDays || !editingEmployee) {
+      showToast('Заполните все поля', 'error');
+      return;
+    }
+
+    const updatedEmployee: Employee = {
+      ...editingEmployee,
+      name: formData.name,
+      vacations: [{
+        start: formData.vacationStart,
+        days: formData.vacationDays
+      }]
+    };
+
+    setEmployees(prev => prev.map(emp => 
+      emp.id === editingEmployee.id ? updatedEmployee : emp
+    ));
+    
+    setFormData({ name: '', vacationStart: '', vacationDays: 14 });
+    setEditingEmployee(null);
+    setShowEditEmployeeModal(false);
+    showToast('Данные сотрудника обновлены!', 'success');
+  };
+
   const getCurrentMonthVacations = () => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
     
     return employees.filter(employee => {
-      const startDate = new Date(employee.vacationStart);
-      const endDate = new Date(startDate);
-      endDate.setDate(startDate.getDate() + employee.vacationDays);
-      
-      return (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) ||
-             (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) ||
-             (startDate <= new Date(currentYear, currentMonth, 1) && endDate >= new Date(currentYear, currentMonth + 1, 0));
+      return employee.vacations.some(vacation => {
+        const startDate = new Date(vacation.start);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + vacation.days);
+        
+        return (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) ||
+               (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) ||
+               (startDate <= new Date(currentYear, currentMonth, 1) && endDate >= new Date(currentYear, currentMonth + 1, 0));
+      });
     });
   };
 
@@ -112,6 +181,10 @@ function App() {
     const width = (days / 365) * 100;
     
     return { left: `${left}%`, width: `${Math.min(width, 100 - left)}%` };
+  };
+
+  const getTotalVacationDays = (vacations: Vacation[]) => {
+    return vacations.reduce((total, vacation) => total + vacation.days, 0);
   };
 
   const Button = ({ 
@@ -200,6 +273,10 @@ function App() {
                 <BarChart3 size={16} />
                 Текущий месяц
               </Button>
+              <Button variant="primary" onClick={() => setShowEmployeeListModal(true)}>
+                <Users size={16} />
+                Список сотрудников
+              </Button>
               <Button variant="secondary" onClick={() => setShowAddEmployeeModal(true)}>
                 <Plus size={16} />
                 Добавить сотрудника
@@ -248,12 +325,21 @@ function App() {
               <div key={employee.id} className="flex items-center border-b border-gray-100 last:border-b-0 pb-4">
                 <div className="w-48 font-medium text-gray-900">{employee.name}</div>
                 <div className="flex-1 relative h-12 bg-gray-50 rounded">
-                  <div 
-                    className="absolute top-2 bottom-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded text-white text-xs flex items-center justify-center font-medium shadow-lg"
-                    style={getVacationPosition(employee.vacationStart, employee.vacationDays)}
-                  >
-                    {employee.vacationDays} дн.
-                  </div>
+                  {employee.vacations.map((vacation, index) => (
+                    <div 
+                      key={index}
+                      className="absolute top-2 bottom-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded text-white text-xs flex items-center justify-center font-medium shadow-lg"
+                      style={getVacationPosition(vacation.start, vacation.days)}
+                      title={`${new Date(vacation.start).toLocaleDateString('ru-RU')} - ${vacation.days} дн.`}
+                    >
+                      {vacation.days}
+                    </div>
+                  ))}
+                  {employee.vacations.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
+                      Нет отпусков
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -285,11 +371,28 @@ function App() {
           {getCurrentMonthVacations().length > 0 ? (
             <div className="space-y-3">
               {getCurrentMonthVacations().map((employee) => (
-                <div key={employee.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="font-medium">{employee.name}</span>
-                  <span className="text-sm text-gray-600">
-                    {new Date(employee.vacationStart).toLocaleDateString('ru-RU')} - {employee.vacationDays} дн.
-                  </span>
+                <div key={employee.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="font-medium mb-2">{employee.name}</div>
+                  <div className="space-y-1">
+                    {employee.vacations
+                      .filter(vacation => {
+                        const currentDate = new Date();
+                        const currentMonth = currentDate.getMonth();
+                        const currentYear = currentDate.getFullYear();
+                        const startDate = new Date(vacation.start);
+                        const endDate = new Date(startDate);
+                        endDate.setDate(startDate.getDate() + vacation.days);
+                        
+                        return (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) ||
+                               (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) ||
+                               (startDate <= new Date(currentYear, currentMonth, 1) && endDate >= new Date(currentYear, currentMonth + 1, 0));
+                      })
+                      .map((vacation, index) => (
+                        <div key={index} className="text-sm text-gray-600">
+                          {new Date(vacation.start).toLocaleDateString('ru-RU')} - {vacation.days} дн.
+                        </div>
+                      ))}
+                  </div>
                 </div>
               ))}
             </div>
@@ -363,6 +466,151 @@ function App() {
             </Button>
             <Button type="submit" variant="primary" className="flex-1">
               Добавить
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Employee List Modal */}
+      <Modal
+        isOpen={showEmployeeListModal}
+        onClose={() => setShowEmployeeListModal(false)}
+        title="Список сотрудников"
+      >
+        <div className="space-y-4">
+          {employees.length > 0 ? (
+            <div className="space-y-3">
+              {employees.map((employee) => (
+                <div key={employee.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900 mb-2">{employee.name}</h4>
+                    <div className="space-y-1">
+                      {employee.vacations.length > 0 ? (
+                        employee.vacations.map((vacation, index) => (
+                          <p key={index} className="text-sm text-gray-600">
+                            Отпуск {index + 1}: {new Date(vacation.start).toLocaleDateString('ru-RU')} ({vacation.days} дн.)
+                          </p>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-600">Нет запланированных отпусков</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Всего дней: {getTotalVacationDays(employee.vacations)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleEditEmployee(employee)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      <Edit size={16} />
+                      Редактировать
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleDeleteEmployee(employee.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X size={16} />
+                      Удалить
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Users size={48} className="mx-auto mb-4 text-gray-300" />
+              <p className="text-lg">Список сотрудников пуст</p>
+              <p className="text-sm">Добавьте сотрудников для отображения здесь</p>
+            </div>
+          )}
+          
+          {employees.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Всего сотрудников:</span>
+                <span className="font-medium">{employees.length}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Edit Employee Modal */}
+      <Modal
+        isOpen={showEditEmployeeModal}
+        onClose={() => {
+          setShowEditEmployeeModal(false);
+          setEditingEmployee(null);
+          setFormData({ name: '', vacationStart: '', vacationDays: 14 });
+        }}
+        title="Редактировать сотрудника"
+      >
+        <form onSubmit={handleUpdateEmployee} className="space-y-4">
+          <div>
+            <label htmlFor="editEmployeeName" className="block text-sm font-medium text-gray-700 mb-2">
+              Фамилия И.О.
+            </label>
+            <input
+              type="text"
+              id="editEmployeeName"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Иванов И.И."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="editVacationStart" className="block text-sm font-medium text-gray-700 mb-2">
+              Дата начала отпуска
+            </label>
+            <input
+              type="date"
+              id="editVacationStart"
+              value={formData.vacationStart}
+              onChange={(e) => setFormData(prev => ({ ...prev, vacationStart: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="editVacationDays" className="block text-sm font-medium text-gray-700 mb-2">
+              Количество дней
+            </label>
+            <input
+              type="number"
+              id="editVacationDays"
+              value={formData.vacationDays}
+              onChange={(e) => setFormData(prev => ({ ...prev, vacationDays: parseInt(e.target.value) }))}
+              min="1"
+              max="365"
+              placeholder="14"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="flex gap-3 pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setShowEditEmployeeModal(false);
+                setEditingEmployee(null);
+                setFormData({ name: '', vacationStart: '', vacationDays: 14 });
+              }}
+              className="flex-1"
+            >
+              Отмена
+            </Button>
+            <Button type="submit" variant="primary" className="flex-1">
+              Сохранить изменения
             </Button>
           </div>
         </form>
