@@ -187,6 +187,39 @@ function App() {
     return vacations.reduce((total, vacation) => total + vacation.days, 0);
   };
 
+  const getCurrentMonthIndex = () => {
+    return new Date().getMonth();
+  };
+
+  const isEmployeeOnVacationThisMonth = (employee: Employee) => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    return employee.vacations.some(vacation => {
+      const startDate = new Date(vacation.start);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + vacation.days);
+      
+      return (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) ||
+             (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) ||
+             (startDate <= new Date(currentYear, currentMonth, 1) && endDate >= new Date(currentYear, currentMonth + 1, 0));
+    });
+  };
+
+  const isVacationInCurrentMonth = (vacation: Vacation) => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const startDate = new Date(vacation.start);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + vacation.days);
+    
+    return (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) ||
+           (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) ||
+           (startDate <= new Date(currentYear, currentMonth, 1) && endDate >= new Date(currentYear, currentMonth + 1, 0));
+  };
+
   const Button = ({ 
     children, 
     variant = 'primary', 
@@ -290,9 +323,17 @@ function App() {
       <main className="container mx-auto px-6 py-8">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex items-center justify-between mb-8 pb-6 border-b">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Диаграмма Ганта - План отпусков на {currentYear} год
-            </h2>
+                          <div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-1">
+                  Диаграмма Ганта - План отпусков на {currentYear} год
+                </h2>
+                <p className="text-sm text-gray-600">
+                  В отпуске в {new Date().toLocaleDateString('ru-RU', { month: 'long' })}: 
+                  <span className="ml-1 font-medium text-orange-600">
+                    {getCurrentMonthVacations().length} сотрудник(ов)
+                  </span>
+                </p>
+              </div>
             <div className="flex items-center gap-2">
               <label htmlFor="yearSelect" className="font-medium text-gray-700">Год:</label>
               <select
@@ -308,6 +349,31 @@ function App() {
             </div>
           </div>
 
+          {/* Legend */}
+          <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <h3 className="text-sm font-medium text-gray-900 mb-3">Обозначения:</h3>
+            <div className="flex flex-wrap gap-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 text-white rounded flex items-center justify-center text-xs font-bold">
+                  {new Date().toLocaleDateString('ru-RU', { month: 'short' })}
+                </div>
+                <span>Текущий месяц</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded"></div>
+                <span>Обычный отпуск</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-3 bg-gradient-to-r from-orange-500 to-red-500 rounded animate-pulse"></div>
+                <span>Отпуск в текущем месяце ★</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded"></div>
+                <span>Сотрудник в отпуске этот месяц</span>
+              </div>
+            </div>
+          </div>
+
           {/* Gantt Chart */}
           <div className="space-y-6">
             {/* Timeline Header */}
@@ -315,34 +381,83 @@ function App() {
               <div className="w-48 font-medium text-gray-700">Сотрудник</div>
               <div className="flex-1 grid grid-cols-12 gap-1 text-center text-sm text-gray-600">
                 {generateMonths().map((month, index) => (
-                  <div key={index} className="py-2">{month}</div>
+                  <div 
+                    key={index} 
+                    className={`py-2 px-1 rounded transition-all duration-200 ${
+                      index === getCurrentMonthIndex() 
+                        ? 'bg-blue-500 text-white font-bold shadow-md transform scale-105' 
+                        : 'hover:bg-gray-200'
+                    }`}
+                  >
+                    {month}
+                    {index === getCurrentMonthIndex() && (
+                      <div className="text-xs opacity-90 mt-0.5">текущий</div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
 
             {/* Employee Rows */}
-            {employees.map((employee) => (
-              <div key={employee.id} className="flex items-center border-b border-gray-100 last:border-b-0 pb-4">
-                <div className="w-48 font-medium text-gray-900">{employee.name}</div>
-                <div className="flex-1 relative h-12 bg-gray-50 rounded">
-                  {employee.vacations.map((vacation, index) => (
+            {employees.map((employee) => {
+              const isOnVacationThisMonth = isEmployeeOnVacationThisMonth(employee);
+              return (
+                <div 
+                  key={employee.id} 
+                  className={`flex items-center border-b border-gray-100 last:border-b-0 pb-4 transition-all duration-300 ${
+                    isOnVacationThisMonth 
+                      ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 shadow-md rounded-lg p-2 -mx-2' 
+                      : ''
+                  }`}
+                >
+                  <div className={`w-48 font-medium ${isOnVacationThisMonth ? 'text-orange-900' : 'text-gray-900'} relative`}>
+                    {employee.name}
+                    {isOnVacationThisMonth && (
+                      <div className="absolute -right-6 top-0 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+                        В отпуске
+                      </div>
+                    )}
+                  </div>
+                  <div className={`flex-1 relative h-12 rounded ${isOnVacationThisMonth ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                    {/* Current month highlight */}
                     <div 
-                      key={index}
-                      className="absolute top-2 bottom-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded text-white text-xs flex items-center justify-center font-medium shadow-lg"
-                      style={getVacationPosition(vacation.start, vacation.days)}
-                      title={`${new Date(vacation.start).toLocaleDateString('ru-RU')} - ${vacation.days} дн.`}
-                    >
-                      {vacation.days}
-                    </div>
-                  ))}
-                  {employee.vacations.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
-                      Нет отпусков
-                    </div>
-                  )}
+                      className="absolute top-0 bottom-0 bg-blue-100 border-l-2 border-r-2 border-blue-300 opacity-30"
+                      style={{
+                        left: `${(getCurrentMonthIndex() / 12) * 100}%`,
+                        width: `${100 / 12}%`
+                      }}
+                    />
+                    
+                    {employee.vacations.map((vacation, index) => {
+                      const isCurrentMonthVacation = isVacationInCurrentMonth(vacation);
+                      return (
+                        <div 
+                          key={index}
+                          className={`absolute top-2 bottom-2 rounded text-white text-xs flex items-center justify-center font-medium shadow-lg transition-all duration-300 ${
+                            isCurrentMonthVacation
+                              ? 'bg-gradient-to-r from-orange-500 to-red-500 animate-pulse ring-2 ring-orange-300 z-10'
+                              : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                          }`}
+                          style={getVacationPosition(vacation.start, vacation.days)}
+                          title={`${new Date(vacation.start).toLocaleDateString('ru-RU')} - ${vacation.days} дн.${isCurrentMonthVacation ? ' (Текущий месяц!)' : ''}`}
+                        >
+                          {vacation.days}
+                          {isCurrentMonthVacation && (
+                            <span className="ml-1 text-yellow-300">★</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                    
+                    {employee.vacations.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
+                        Нет отпусков
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {employees.length === 0 && (
               <div className="text-center py-12 text-gray-500">
