@@ -231,6 +231,24 @@ function App() {
     });
   };
 
+  const getNextMonthVacations = () => {
+    const currentDate = new Date();
+    const nextMonth = (currentDate.getMonth() + 1) % 12;
+    const nextYear = nextMonth === 0 ? currentDate.getFullYear() + 1 : currentDate.getFullYear();
+    
+    return employees.filter(employee => {
+      return employee.vacations.some(vacation => {
+        const startDate = new Date(vacation.start);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + vacation.days);
+        
+        return (startDate.getMonth() === nextMonth && startDate.getFullYear() === nextYear) ||
+               (endDate.getMonth() === nextMonth && endDate.getFullYear() === nextYear) ||
+               (startDate <= new Date(nextYear, nextMonth, 1) && endDate >= new Date(nextYear, nextMonth + 1, 0));
+      });
+    });
+  };
+
   const generateMonths = () => {
     const months = [
       'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
@@ -389,8 +407,10 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-8">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+      <main className="flex min-h-screen">
+        {/* Left Panel - Gantt Chart */}
+        <div className="flex-1 p-6">
+          <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="flex items-center justify-between mb-8 pb-6 border-b">
                           <div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-1">
@@ -513,6 +533,66 @@ function App() {
                 <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
                 <p className="text-lg">Нет добавленных сотрудников</p>
                 <p className="text-sm">Добавьте сотрудника, чтобы начать планирование отпусков</p>
+              </div>
+            )}
+          </div>
+        </div>
+        </div>
+
+        {/* Right Panel - Next Month Info */}
+        <div className="w-80 bg-white border-l border-gray-200 p-6">
+          <div className="sticky top-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Calendar size={20} />
+              Следующий месяц
+            </h3>
+            
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <h4 className="font-medium text-blue-900 mb-2">
+                {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+              </h4>
+              <p className="text-sm text-blue-700">
+                В отпуске: <span className="font-medium">{getNextMonthVacations().length} сотрудник(ов)</span>
+              </p>
+            </div>
+
+            {getNextMonthVacations().length > 0 ? (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {getNextMonthVacations().map((employee) => (
+                  <div key={employee.id} className="p-3 bg-gray-50 rounded-lg border">
+                    <div className="font-medium text-gray-900 mb-2">{employee.name}</div>
+                    <div className="space-y-1">
+                      {employee.vacations
+                        .filter(vacation => {
+                          const currentDate = new Date();
+                          const nextMonth = (currentDate.getMonth() + 1) % 12;
+                          const nextYear = nextMonth === 0 ? currentDate.getFullYear() + 1 : currentDate.getFullYear();
+                          const startDate = new Date(vacation.start);
+                          const endDate = new Date(startDate);
+                          endDate.setDate(startDate.getDate() + vacation.days);
+                          
+                          return (startDate.getMonth() === nextMonth && startDate.getFullYear() === nextYear) ||
+                                 (endDate.getMonth() === nextMonth && endDate.getFullYear() === nextYear) ||
+                                 (startDate <= new Date(nextYear, nextMonth, 1) && endDate >= new Date(nextYear, nextMonth + 1, 0));
+                        })
+                        .map((vacation, index) => (
+                          <div key={index} className="text-sm text-gray-600 bg-white p-2 rounded border-l-2 border-orange-400">
+                            <div className="font-medium text-orange-700">
+                              {new Date(vacation.start).toLocaleDateString('ru-RU')}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {vacation.days} дн.
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
+                <p className="text-sm">В следующем месяце отпусков нет</p>
               </div>
             )}
           </div>
