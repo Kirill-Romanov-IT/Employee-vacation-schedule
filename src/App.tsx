@@ -506,13 +506,8 @@ function App() {
                   >
                     <div className={`w-64 font-medium ${isOnVacationThisMonth ? 'text-orange-900' : 'text-gray-900'} relative`}>
                       <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2">
                           <span>{employee.name}</span>
-                          {isOnVacationThisMonth && (
-                            <div className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
-                              В отпуске
-                            </div>
-                          )}
                         </div>
                         {isOnVacationThisMonth && (() => {
                           const vacationInfo = getCurrentMonthVacationInfo(employee);
