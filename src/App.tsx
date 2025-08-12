@@ -34,10 +34,26 @@ function App() {
   });
   const [editingVacations, setEditingVacations] = useState<Vacation[]>([]);
   const [editingVacationIndex, setEditingVacationIndex] = useState<number | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Load initial data
   useEffect(() => {
     const loadVacationData = async () => {
+      // Сначала проверяем localStorage - он имеет приоритет
+      const savedEmployees = localStorage.getItem('vacation-employees');
+      if (savedEmployees) {
+        try {
+          const parsedEmployees = JSON.parse(savedEmployees);
+          setEmployees(parsedEmployees);
+          setDataLoaded(true);
+          return; // Если есть данные в localStorage, используем их
+        } catch (error) {
+          console.error('Error parsing localStorage data:', error);
+          localStorage.removeItem('vacation-employees'); // Удаляем поврежденные данные
+        }
+      }
+
+      // Если нет данных в localStorage, загружаем из JSON файла (только первый раз)
       try {
         const response = await fetch('/vacations.json');
         const vacationData = await response.json();
@@ -49,15 +65,11 @@ function App() {
         }));
         
         setEmployees(formattedEmployees);
+        setDataLoaded(true);
       } catch (error) {
         console.error('Error loading vacation data:', error);
-        // Fallback to localStorage or empty array
-        const savedEmployees = localStorage.getItem('vacation-employees');
-        if (savedEmployees) {
-          setEmployees(JSON.parse(savedEmployees));
-        } else {
-          setEmployees([]);
-        }
+        setEmployees([]); // Пустой массив если ничего не загрузилось
+        setDataLoaded(true);
       }
     };
 
@@ -66,8 +78,11 @@ function App() {
 
   // Save employees to localStorage
   useEffect(() => {
-    localStorage.setItem('vacation-employees', JSON.stringify(employees));
-  }, [employees]);
+    // Сохраняем только после первоначальной загрузки данных
+    if (dataLoaded) {
+      localStorage.setItem('vacation-employees', JSON.stringify(employees));
+    }
+  }, [employees, dataLoaded]);
 
   const showToast = (message: string, type: Toast['type'] = 'info') => {
     const id = Date.now().toString();
