@@ -328,7 +328,7 @@ function App() {
                   Диаграмма Ганта - План отпусков на {currentYear} год
                 </h2>
                 <p className="text-sm text-gray-600">
-                  В отпуске в {new Date().toLocaleDateString('ru-RU', { month: 'long' })}: 
+                  Отпуск в {new Date().toLocaleDateString('ru-RU', { month: 'long' })}е: 
                   <span className="ml-1 font-medium text-orange-600">
                     {getCurrentMonthVacations().length} сотрудник(ов)
                   </span>
@@ -398,66 +398,69 @@ function App() {
               </div>
             </div>
 
-            {/* Employee Rows */}
-            {employees.map((employee) => {
-              const isOnVacationThisMonth = isEmployeeOnVacationThisMonth(employee);
-              return (
-                <div 
-                  key={employee.id} 
-                  className={`flex items-center border-b border-gray-100 last:border-b-0 pb-4 transition-all duration-300 ${
-                    isOnVacationThisMonth 
-                      ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 shadow-md rounded-lg p-2 -mx-2' 
-                      : ''
-                  }`}
-                >
-                  <div className={`w-48 font-medium ${isOnVacationThisMonth ? 'text-orange-900' : 'text-gray-900'} relative`}>
-                    {employee.name}
-                    {isOnVacationThisMonth && (
-                      <div className="absolute -right-6 top-0 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
-                        В отпуске
-                      </div>
-                    )}
-                  </div>
-                  <div className={`flex-1 relative h-12 rounded ${isOnVacationThisMonth ? 'bg-orange-50' : 'bg-gray-50'}`}>
-                    {/* Current month highlight */}
-                    <div 
-                      className="absolute top-0 bottom-0 bg-blue-100 border-l-2 border-r-2 border-blue-300 opacity-30"
-                      style={{
-                        left: `${(getCurrentMonthIndex() / 12) * 100}%`,
-                        width: `${100 / 12}%`
-                      }}
-                    />
-                    
-                    {employee.vacations.map((vacation, index) => {
-                      const isCurrentMonthVacation = isVacationInCurrentMonth(vacation);
-                      return (
-                        <div 
-                          key={index}
-                          className={`absolute top-2 bottom-2 rounded text-white text-xs flex items-center justify-center font-medium shadow-lg transition-all duration-300 ${
-                            isCurrentMonthVacation
-                              ? 'bg-gradient-to-r from-orange-500 to-red-500 animate-pulse ring-2 ring-orange-300 z-10'
-                              : 'bg-gradient-to-r from-blue-500 to-purple-500'
-                          }`}
-                          style={getVacationPosition(vacation.start, vacation.days)}
-                          title={`${new Date(vacation.start).toLocaleDateString('ru-RU')} - ${vacation.days} дн.${isCurrentMonthVacation ? ' (Текущий месяц!)' : ''}`}
-                        >
-                          {vacation.days}
-                          {isCurrentMonthVacation && (
-                            <span className="ml-1 text-yellow-300">★</span>
-                          )}
+            {/* Employee Rows Container with fixed height and scroll */}
+            <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+              {/* Employee Rows */}
+              {employees.map((employee) => {
+                const isOnVacationThisMonth = isEmployeeOnVacationThisMonth(employee);
+                return (
+                  <div 
+                    key={employee.id} 
+                    className={`flex items-center border-b border-gray-100 last:border-b-0 pb-4 transition-all duration-300 ${
+                      isOnVacationThisMonth 
+                        ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 shadow-md rounded-lg p-2 -mx-2' 
+                        : ''
+                    }`}
+                  >
+                    <div className={`w-48 font-medium ${isOnVacationThisMonth ? 'text-orange-900' : 'text-gray-900'} relative`}>
+                      {employee.name}
+                      {isOnVacationThisMonth && (
+                        <div className="absolute -right-6 top-0 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+                          В отпуске
                         </div>
-                      );
-                    })}
-                    
-                    {employee.vacations.length === 0 && (
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
-                        Нет отпусков
-                      </div>
-                    )}
+                      )}
+                    </div>
+                    <div className={`flex-1 relative h-12 rounded ${isOnVacationThisMonth ? 'bg-orange-50' : 'bg-gray-50'}`}>
+                      {/* Current month highlight */}
+                      <div 
+                        className="absolute top-0 bottom-0 bg-blue-100 border-l-2 border-r-2 border-blue-300 opacity-30"
+                        style={{
+                          left: `${(getCurrentMonthIndex() / 12) * 100}%`,
+                          width: `${100 / 12}%`
+                        }}
+                      />
+                      
+                      {employee.vacations.map((vacation, index) => {
+                        const isCurrentMonthVacation = isVacationInCurrentMonth(vacation);
+                        return (
+                          <div 
+                            key={index}
+                            className={`absolute top-2 bottom-2 rounded text-white text-xs flex items-center justify-center font-medium shadow-lg transition-all duration-300 ${
+                              isCurrentMonthVacation
+                                ? 'bg-gradient-to-r from-orange-500 to-red-500 animate-pulse ring-2 ring-orange-300 z-10'
+                                : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                            }`}
+                            style={getVacationPosition(vacation.start, vacation.days)}
+                            title={`${new Date(vacation.start).toLocaleDateString('ru-RU')} - ${vacation.days} дн.${isCurrentMonthVacation ? ' (Текущий месяц!)' : ''}`}
+                          >
+                            {vacation.days}
+                            {isCurrentMonthVacation && (
+                              <span className="ml-1 text-yellow-300">★</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      {employee.vacations.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">
+                          Нет отпусков
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
 
             {employees.length === 0 && (
               <div className="text-center py-12 text-gray-500">
