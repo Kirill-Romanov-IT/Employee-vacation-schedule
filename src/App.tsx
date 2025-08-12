@@ -249,6 +249,32 @@ function App() {
     });
   };
 
+  const getCurrentMonthVacationInfo = (employee: Employee) => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    const currentMonthVacations = employee.vacations.filter(vacation => {
+      const startDate = new Date(vacation.start);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + vacation.days);
+      
+      return (startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear) ||
+             (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) ||
+             (startDate <= new Date(currentYear, currentMonth, 1) && endDate >= new Date(currentYear, currentMonth + 1, 0));
+    });
+
+    if (currentMonthVacations.length > 0) {
+      const vacation = currentMonthVacations[0]; // Берем первый отпуск в текущем месяце
+      return {
+        startDate: new Date(vacation.start).toLocaleDateString('ru-RU'),
+        days: vacation.days
+      };
+    }
+    
+    return null;
+  };
+
   const generateMonths = () => {
     const months = [
       'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
@@ -444,7 +470,7 @@ function App() {
           <div className="space-y-6">
             {/* Timeline Header */}
             <div className="flex bg-gray-50 rounded-lg p-4">
-              <div className="w-48 font-medium text-gray-700">Сотрудник</div>
+              <div className="w-64 font-medium text-gray-700">Сотрудник</div>
               <div className="flex-1 grid grid-cols-12 gap-1 text-center text-sm text-gray-600">
                 {generateMonths().map((month, index) => (
                   <div 
@@ -478,13 +504,25 @@ function App() {
                         : ''
                     }`}
                   >
-                    <div className={`w-48 font-medium ${isOnVacationThisMonth ? 'text-orange-900' : 'text-gray-900'} relative`}>
-                      {employee.name}
-                      {isOnVacationThisMonth && (
-                        <div className="absolute -right-6 top-0 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
-                          В отпуске
+                    <div className={`w-64 font-medium ${isOnVacationThisMonth ? 'text-orange-900' : 'text-gray-900'} relative`}>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span>{employee.name}</span>
+                          {isOnVacationThisMonth && (
+                            <div className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
+                              В отпуске
+                            </div>
+                          )}
                         </div>
-                      )}
+                        {isOnVacationThisMonth && (() => {
+                          const vacationInfo = getCurrentMonthVacationInfo(employee);
+                          return vacationInfo ? (
+                            <div className="text-xs text-orange-700 mt-1 font-normal">
+                              {vacationInfo.startDate} - {vacationInfo.days} дн.
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
                     </div>
                     <div className={`flex-1 relative h-12 rounded ${isOnVacationThisMonth ? 'bg-orange-50' : 'bg-gray-50'}`}>
                       {/* Current month highlight */}
