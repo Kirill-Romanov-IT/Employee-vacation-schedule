@@ -349,30 +349,7 @@ function App() {
             </div>
           </div>
 
-          {/* Legend */}
-          <div className="bg-blue-50 rounded-lg p-4 mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Обозначения:</h3>
-            <div className="flex flex-wrap gap-4 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-blue-500 text-white rounded flex items-center justify-center text-xs font-bold">
-                  {new Date().toLocaleDateString('ru-RU', { month: 'short' })}
-                </div>
-                <span>Текущий месяц</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded"></div>
-                <span>Обычный отпуск</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-3 bg-gradient-to-r from-orange-500 to-red-500 rounded animate-pulse"></div>
-                <span>Отпуск в текущем месяце ★</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-3 bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded"></div>
-                <span>Сотрудник в отпуске этот месяц</span>
-              </div>
-            </div>
-          </div>
+
 
           {/* Gantt Chart */}
           <div className="space-y-6">
@@ -399,7 +376,7 @@ function App() {
             </div>
 
             {/* Employee Rows Container with fixed height and scroll */}
-            <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+            <div className="max-h-[600px] overflow-y-auto space-y-4 pr-2">
               {/* Employee Rows */}
               {employees.map((employee) => {
                 const isOnVacationThisMonth = isEmployeeOnVacationThisMonth(employee);
