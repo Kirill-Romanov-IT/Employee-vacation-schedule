@@ -540,8 +540,8 @@ function App() {
         </div>
 
         {/* Right Panel - Next Month Info */}
-        <div className="w-80 bg-white border-l border-gray-200 p-6">
-          <div className="sticky top-6">
+        <div className="w-80 bg-white border-l border-gray-200 p-6 h-screen">
+          <div className="sticky top-6 h-full flex flex-col">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Calendar size={20} />
               Следующий месяц
@@ -557,7 +557,7 @@ function App() {
             </div>
 
             {getNextMonthVacations().length > 0 ? (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2">
                 {getNextMonthVacations().map((employee) => (
                   <div key={employee.id} className="p-3 bg-gray-50 rounded-lg border">
                     <div className="font-medium text-gray-900 mb-2">{employee.name}</div>
@@ -590,9 +590,11 @@ function App() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
-                <p className="text-sm">В следующем месяце отпусков нет</p>
+              <div className="flex-1 flex items-center justify-center text-gray-500">
+                <div className="text-center">
+                  <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
+                  <p className="text-sm">В следующем месяце отпусков нет</p>
+                </div>
               </div>
             )}
           </div>
